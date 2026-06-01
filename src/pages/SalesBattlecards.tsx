@@ -47,7 +47,9 @@ export default function SalesBattlecards() {
   // Dynamically extract all top-level categories and sub-keys
   const categories = new Set<string>();
   competitors.forEach(c => {
-    Object.keys(c.data).forEach(k => categories.add(k));
+    Object.keys(c.data).forEach(k => {
+      if (k !== '_products') categories.add(k);
+    });
   });
 
   const categoryList = Array.from(categories).sort();

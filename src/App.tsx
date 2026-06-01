@@ -6,6 +6,7 @@ import DiscoveryAnimation from './pages/DiscoveryAnimation';
 import SalesBattlecards from './pages/SalesBattlecards';
 import StrategyRag from './pages/StrategyRag';
 import Settings from './pages/Settings';
+import ProductComparisons from './pages/ProductComparisons';
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/discovery" element={<DiscoveryAnimation />} />
               <Route path="/battlecards" element={<SalesBattlecards />} />
+              <Route path="/products" element={<ProductComparisons />} />
               <Route path="/strategy" element={<StrategyRag />} />
               <Route path="/settings" element={<Settings />} />
             </Routes>

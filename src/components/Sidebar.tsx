@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Activity, LayoutDashboard, Target, MessageSquareCode, Settings } from 'lucide-react';
+import { Activity, LayoutDashboard, Target, MessageSquareCode, Settings, Package } from 'lucide-react';
 
 export default function Sidebar() {
   const location = useLocation();
@@ -8,6 +8,7 @@ export default function Sidebar() {
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { name: 'Discovery Engine', path: '/discovery', icon: Activity },
     { name: 'Sales Battlecards', path: '/battlecards', icon: Target },
+    { name: 'Product Comparisons', path: '/products', icon: Package },
     { name: 'Strategy RAG', path: '/strategy', icon: MessageSquareCode },
     { name: 'Settings', path: '/settings', icon: Settings },
   ];

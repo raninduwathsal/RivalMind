@@ -10,6 +10,12 @@ const openai = new OpenAI({
   baseURL: 'https://api.deepseek.com/v1',
 });
 
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
+const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || '';
+const supabase = createClient(supabaseUrl, supabaseKey);
+
 // Generic web search tool using Serper
 async function searchWeb(query: string) {
   const apiKey = process.env.SERPER_API_KEY;
@@ -44,10 +50,30 @@ async function scrapeUrl(url: string) {
 export async function runInvestigatorAgent(companyName: string, onProgress: (msg: string) => void) {
   onProgress(`Starting investigation on: ${companyName}`);
   
+  // Fetch existing metric keys to encourage apples-to-apples comparison
+  let existingMetricsHint = "";
+  try {
+    const { data } = await supabase.from('competitors').select('metrics');
+    if (data && data.length > 0) {
+      const keys = new Set<string>();
+      data.forEach((row: any) => {
+        if (row.metrics) Object.keys(row.metrics).forEach(k => keys.add(k));
+      });
+      if (keys.size > 0) {
+        existingMetricsHint = `\nIMPORTANT: The current competitive matrix tracks the following metrics for other companies: ${Array.from(keys).join(', ')}. 
+Please prioritize finding data for these specific categories so we can compare them directly. You may also add new categories if you find something uniquely important.`;
+      }
+    }
+  } catch (e) {
+    // Ignore db errors, just proceed without hint
+  }
+
   const systemPrompt = `You are an elite competitive intelligence investigator.
 Your goal is to investigate the company "${companyName}". 
 You must search the web, find their main site, their pricing, their social media momentum on Reddit/Twitter/LinkedIn, and recent news.
-Then, dynamically synthesize a fully structured JSON payload containing metrics you deem important based on your findings.
+Then, dynamically synthesize a fully structured JSON payload containing metrics you deem important based on your findings.${existingMetricsHint}
+
+Additionally, if the company offers SaaS packages, menu items, or ecommerce products, you must extract these as a separate catalog/array so we can compare their products side-by-side.
 
 You have access to tools to search the web and scrape URLs. Use them to gather intel.
 IMPORTANT: You have up to 30 steps to investigate. Go down rabbit holes. Explore Reddit threads, look at their team, and find deep strategic intel.
@@ -79,14 +105,19 @@ When you are completely satisfied with your deep dive, call the "submit_findings
       type: "function",
       function: {
         name: "submit_findings",
-        description: "Submit the final synthesized competitive metrics.",
+        description: "Submit the final synthesized competitive metrics and product catalog.",
         parameters: { 
           type: "object", 
           properties: { 
             metrics: { 
               type: "object", 
               description: "A flat or nested JSON object containing all the discovered metrics and intelligence."
-            } 
+            },
+            products: {
+              type: "array",
+              description: "An array of product objects (e.g., SaaS tiers, menu items). Each object should have a 'name', 'price', and 'features'/'description'. Leave empty if none found.",
+              items: { type: "object", additionalProperties: true }
+            }
           }, 
           required: ["metrics"] 
         }
@@ -121,7 +152,14 @@ When you are completely satisfied with your deep dive, call the "submit_findings
         
         if (toolCall.function.name === 'submit_findings') {
           onProgress(`Investigation complete!`);
-          return args.metrics;
+          
+          // Inject products into metrics so it saves cleanly to the JSONB column
+          const finalMetrics = args.metrics || {};
+          if (args.products && Array.isArray(args.products) && args.products.length > 0) {
+            finalMetrics._products = args.products;
+          }
+          
+          return finalMetrics;
         }
 
         let toolOutput = "";
