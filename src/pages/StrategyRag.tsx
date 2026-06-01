@@ -7,15 +7,35 @@ export default function StrategyRag() {
     { role: 'assistant', content: 'Hello! I have vectorized the latest intelligence on Acme Corp, Globex, and Initech. Ask me anything about their pricing, features, or how to pitch against them.' }
   ]);
 
-  const handleSend = () => {
-    if (!query.trim()) return;
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSend = async () => {
+    if (!query.trim() || isLoading) return;
     
-    setMessages([...messages, { role: 'user', content: query }]);
+    const userQuery = query;
+    setMessages(prev => [...prev, { role: 'user', content: userQuery }]);
     setQuery('');
+    setIsLoading(true);
     
-    setTimeout(() => {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Based on recent data from their changelog and pricing page, Acme Corp recently introduced Enterprise SSO. To stand out, you should highlight our easier onboarding and significantly lower price point for startups.' }]);
-    }, 1000);
+    try {
+      const response = await fetch('http://localhost:3001/api/rag/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: userQuery })
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        setMessages(prev => [...prev, { role: 'assistant', content: data.answer }]);
+      } else {
+        setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${data.error || 'Failed to query RAG'}` }]);
+      }
+    } catch (err) {
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Connection to Strategy Engine failed. Is the backend running?' }]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -48,14 +68,16 @@ export default function StrategyRag() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="Ask about competitor features, pitch ideas, or recent news..."
-            className="w-full bg-[#121212] border border-[#2a2a2a] rounded-md pl-4 pr-12 py-3 text-sm text-white focus:outline-none focus:border-purple-500 transition-colors"
+            disabled={isLoading}
+            placeholder={isLoading ? "Analyzing intelligence..." : "Ask about competitor features, pitch ideas, or recent news..."}
+            className="w-full bg-[#121212] border border-[#2a2a2a] rounded-md pl-4 pr-12 py-3 text-sm text-white focus:outline-none focus:border-purple-500 transition-colors disabled:opacity-50"
           />
           <button 
             onClick={handleSend}
-            className="absolute right-2 top-2 bottom-2 aspect-square flex items-center justify-center bg-purple-600 hover:bg-purple-700 text-white rounded transition-colors"
+            disabled={isLoading}
+            className="absolute right-2 top-2 bottom-2 aspect-square flex items-center justify-center bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/50 text-white rounded transition-colors"
           >
-            <Send size={16} />
+            {isLoading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Send size={16} />}
           </button>
         </div>
       </div>

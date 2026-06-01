@@ -54,6 +54,61 @@ app.post('/api/scrape/social', async (req, res) => {
   }
 });
 
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
+const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || '';
+const supabase = createClient(supabaseUrl, supabaseKey);
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+
+// 4. Strategy RAG Query endpoint
+app.post('/api/rag/query', async (req, res) => {
+  try {
+    const { query } = req.body;
+    if (!query) return res.status(400).json({ error: 'Query is required' });
+
+    if (!process.env.GEMINI_API_KEY) {
+      return res.json({ answer: 'Mock Mode: Gemini API Key missing. You should highlight our easier onboarding.' });
+    }
+
+    // 1. Embed the query
+    const embeddingModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
+    const embedResult = await embeddingModel.embedContent(query);
+    const queryEmbedding = embedResult.embedding.values;
+
+    // 2. Query Supabase vector store
+    const { data: matches, error } = await supabase.rpc('match_competitor_embeddings', {
+      query_embedding: queryEmbedding,
+      match_threshold: 0.7,
+      match_count: 5
+    });
+
+    if (error) throw error;
+
+    const contextText = matches?.map((m: any) => `Source: ${m.source}\nContent: ${m.content}`).join('\n\n') || 'No direct context found.';
+
+    // 3. Generate answer using Gemini 1.5 Pro/Flash
+    const chatModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const prompt = `You are the Rival Mind Strategy RAG Assistant. 
+Answer the user's question based strictly on the provided intelligence context below.
+If the context doesn't have the answer, say so.
+
+Context:
+${contextText}
+
+User Query: ${query}`;
+
+    const result = await chatModel.generateContent(prompt);
+    const answer = result.response.text();
+
+    res.json({ answer, contextUsed: matches });
+  } catch (error: any) {
+    console.error('[RAG Query] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`[Server] RivalMind Backend running on port ${PORT}`);
 });

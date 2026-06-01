@@ -11,12 +11,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.106.2",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "https-proxy-agent": "^9.0.0",
     "lucide-react": "^1.16.0",
+    "node-fetch": "^3.3.2",
     "openai": "^6.39.0",
     "puppeteer": "^25.1.0",
     "puppeteer-extra": "^3.3.6",
