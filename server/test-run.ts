@@ -1,30 +1,41 @@
 import { discoverFootprint } from './discovery.js';
 import { scrapeTarget } from './scraper/stealth.js';
-import { ingestContent } from './rag/ingestion.js';
+import { parseCompetitorData } from './ai/deepseek.js';
 
 async function main() {
   const target = process.argv[2] || 'acmecorp.com';
+  let targetUrl = target;
+  if (!targetUrl.startsWith('http')) {
+    targetUrl = `https://${targetUrl}`;
+  }
   
   console.log(`\n=================================================`);
   console.log(`🚀 RIVALMIND INTELLIGENCE ENGINE: INITIALIZING`);
   console.log(`=================================================\n`);
 
-  // Step 1: Discovery
+  // Step 1: Discovery (Still mocked for now to focus on extraction)
+  console.log(`[Discovery] Initiating fan-out search for ${target}...`);
   const discoveryResults = await discoverFootprint(target);
-  console.log(`\n[Discovery] Found ${discoveryResults.totalLinks} potential intelligence nodes across the web.\n`);
+  console.log(`[Discovery] Found ${discoveryResults.totalLinks} potential intelligence nodes across the web.\n`);
 
-  // Step 2: Scraping (Simulated)
+  // Step 2: Live Scraping with Puppeteer Stealth
   console.log(`[Scraper] Booting stealth collection sequence...`);
-  const scrapeData = await scrapeTarget(`https://${target}`);
-  console.log(`[Scraper] Retrieved ${scrapeData.extractedLength} bytes of intelligence from ${scrapeData.url}.\n`);
+  const scrapeData = await scrapeTarget(targetUrl);
+  console.log(`[Scraper] Retrieved ${scrapeData.extractedLength} characters of raw text from ${scrapeData.url}.\n`);
 
-  // Step 3: RAG Ingestion (Simulated)
-  console.log(`[RAG] Pushing data to vector knowledge base...`);
-  const ingestionData = await ingestContent(`Mocked intelligence content representing ${scrapeData.extractedLength} bytes of pricing, features, and hiring data.`, { source: scrapeData.url });
-  console.log(`[RAG] Successfully vectorized and indexed ${ingestionData.chunksInserted} chunks.\n`);
+  // Step 3: DeepSeek AI Parsing
+  console.log(`[AI Engine] Sending ${scrapeData.extractedLength} chars to DeepSeek (v4 equivalent) for structured extraction...`);
+  const startTime = Date.now();
+  const structuredData = await parseCompetitorData(scrapeData.rawText);
+  const timeTaken = ((Date.now() - startTime) / 1000).toFixed(2);
+  
+  console.log(`[AI Engine] DeepSeek extraction completed in ${timeTaken}s.\n`);
+  
+  console.log(`\n=== EXTRACTED BATTLECARD JSON ===\n`);
+  console.log(JSON.stringify(structuredData, null, 2));
 
-  console.log(`=================================================`);
-  console.log(`✅ OPERATION COMPLETE. DATA READY FOR DASHBOARD.`);
+  console.log(`\n=================================================`);
+  console.log(`✅ OPERATION COMPLETE. DATA READY FOR SUPABASE.`);
   console.log(`=================================================\n`);
 }
 
