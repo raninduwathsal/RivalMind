@@ -26,6 +26,13 @@ FOR SELECT
 TO anon
 USING (true);
 
+-- Allow anonymous insert access (for MVP demo purposes)
+CREATE POLICY "Allow public insert access"
+ON public.competitors
+FOR INSERT
+TO anon
+WITH CHECK (true);
+
 -- Function to automatically update the updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -54,6 +61,7 @@ VALUES
   'Acme Corp', 
   'acmecorp.com', 
   false, 
+  '{"features": {"discovery": false, "ragChat": false, "stealthEvasion": false, "apiAccess": true}, "market": {"g2Rating": "4.8/5", "sentiment": "Trending Negative (-12%)"}, "social": {"shareOfVoice": "65% (Dominant)", "redditMomentum": "Low (mostly complaints)", "blogStrategy": "SEO / Top-of-Funnel", "communityGrowth": "Stagnant"}, "gtm": {"audience": "Enterprise Only", "salesMotion": "Sales-Led (Demo required)", "freeTrial": "No Trial"}, "ecosystem": {"integrations": "Salesforce, Marketo, Snowflake"}, "resources": {"funding": "$45M Series B", "employees": "200+", "deployment": "Cloud & On-prem", "hiringVelocity": "Hiring Freeze"}, "compliance": {"soc2": true, "gdpr": true, "hipaa": true}, "pricing": "$899/mo + Usage"}'::jsonb
 );
 
 -- Enable pgvector extension for Strategy RAG Engine

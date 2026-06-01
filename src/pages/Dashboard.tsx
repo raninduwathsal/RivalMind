@@ -1,19 +1,56 @@
+import { useState, useEffect } from 'react';
 import { Activity, AlertTriangle, ArrowUpRight, TrendingUp, Users } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 export default function Dashboard() {
+  const [competitorCount, setCompetitorCount] = useState(0);
+  const [latestUpdate, setLatestUpdate] = useState("Just now");
+  const [alerts, setAlerts] = useState([
+    { company: 'Acme Corp', event: 'Enterprise SSO and Audit Logs detected on pricing page.', impact: 'High' }
+  ]);
+
+  useEffect(() => {
+    // Initial fetch
+    const fetchStats = async () => {
+      const { count } = await supabase.from('competitors').select('*', { count: 'exact', head: true });
+      if (count) setCompetitorCount(count);
+    };
+    fetchStats();
+
+    // Subscribe to realtime updates
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'competitors' },
+        (payload) => {
+          setLatestUpdate("Seconds ago");
+          setAlerts(prev => [
+            { company: payload.new.name, event: 'Automated Discovery Engine detected a payload change.', impact: 'Strategic' },
+            ...prev
+          ]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight text-white">Executive Briefing</h1>
         <div className="flex items-center gap-2">
           <span className="text-sm text-[#a1a1aa]">Last updated:</span>
-          <span className="text-sm font-medium text-white">Just now</span>
+          <span className="text-sm font-medium text-white">{latestUpdate}</span>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <MetricCard title="Global Threat Score" value="78/100" trend="+5" trendUp={true} alert={true} />
-        <MetricCard title="Competitor Activity" value="High" subtitle="3 Major Events" icon={<Activity className="text-blue-500" />} />
+        <MetricCard title="Competitors Tracked" value={competitorCount || "4"} subtitle="Active Matrix" icon={<Activity className="text-blue-500" />} />
         <MetricCard title="Pricing Movements" value="2" subtitle="in last 7 days" icon={<TrendingUp className="text-yellow-500" />} />
         <MetricCard title="Hiring Velocity (AI)" value="+42%" subtitle="Industry Avg: +12%" icon={<Users className="text-green-500" />} />
       </div>
@@ -23,7 +60,9 @@ export default function Dashboard() {
           <div className="bg-[#121212] border border-[#2a2a2a] rounded-lg p-5">
             <h2 className="text-lg font-semibold text-white mb-4">Market Timeline</h2>
             <div className="space-y-4">
-              <TimelineEvent date="Today, 09:41 AM" company="Acme Corp" event="Launched Enterprise SSO" impact="High" />
+              {alerts.map((alert, i) => (
+                <TimelineEvent key={i} date={i === 0 ? "Today, Just Now" : "Yesterday"} company={alert.company} event={alert.event} impact={alert.impact} />
+              ))}
               <TimelineEvent date="Yesterday" company="Globex" event="Increased Pro Tier pricing by 15%" impact="Strategic" />
               <TimelineEvent date="Apr 24" company="Initech" event="Opened 12 ML Engineering roles" impact="Medium" />
             </div>
@@ -36,10 +75,12 @@ export default function Dashboard() {
               <h2 className="text-lg font-semibold text-white">Strategic Alerts</h2>
             </div>
             <div className="space-y-3">
-              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-md">
-                <p className="text-sm text-red-200 font-medium">Acme Corp moving upmarket</p>
-                <p className="text-xs text-red-300/70 mt-1">Enterprise SSO and Audit Logs detected on pricing page.</p>
-              </div>
+              {alerts.slice(0, 2).map((alert, i) => (
+                <div key={i} className="p-3 bg-red-500/10 border border-red-500/20 rounded-md">
+                  <p className="text-sm text-red-200 font-medium">{alert.company} update detected</p>
+                  <p className="text-xs text-red-300/70 mt-1">{alert.event}</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>

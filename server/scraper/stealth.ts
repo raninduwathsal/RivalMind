@@ -43,8 +43,11 @@ export async function scrapeTarget(url: string) {
     await page.setViewport({ width: 1280, height: 800 });
 
     console.log(`[Stealth Scraper] Navigating to ${url}...`);
+    // Ensure URL has a protocol, otherwise Puppeteer's page.goto will throw an invalid URL error
+    const validUrl = url.startsWith('http://') || url.startsWith('https://') ? url : `https://${url}`;
+    
     // Navigate to URL and wait for DOM content to load
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.goto(validUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
     
     // Wait for a short random delay to mimic human reading and let SPA render
     await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 2000));

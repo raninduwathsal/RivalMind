@@ -1,8 +1,28 @@
 import { Search, Bell, User, Plus } from 'lucide-react';
 import { useState } from 'react';
+import { supabase } from '../lib/supabase';
+import { useNavigate } from 'react-router-dom';
 
 export default function Header() {
   const [url, setUrl] = useState('');
+  const [isTracking, setIsTracking] = useState(false);
+  const navigate = useNavigate();
+
+  const handleTrack = async () => {
+    if (!url.trim()) return;
+    setIsTracking(true);
+    try {
+      // Clean domain
+      const domain = url.replace(/^(?:https?:\/\/)?(?:www\.)?/i, "").split('/')[0];
+
+      setUrl('');
+      navigate(`/discovery?url=${encodeURIComponent(url)}&domain=${encodeURIComponent(domain)}`);
+    } catch (error) {
+      console.error("Failed to route to discovery:", error);
+    } finally {
+      setIsTracking(false);
+    }
+  };
 
   return (
     <header className="h-16 bg-[#121212] border-b border-[#2a2a2a] flex items-center justify-between px-6 shrink-0">
@@ -25,12 +45,18 @@ export default function Header() {
             type="url"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleTrack()}
             placeholder="Add competitor URL (e.g., acme.com)"
-            className="bg-transparent border-none outline-none text-white text-sm pl-3 py-2 w-64 placeholder-[#a1a1aa]"
+            disabled={isTracking}
+            className="bg-transparent border-none outline-none text-white text-sm pl-3 py-2 w-64 placeholder-[#a1a1aa] disabled:opacity-50"
           />
-          <button className="bg-[#2a2a2a] hover:bg-[#333] text-white px-3 py-2 flex items-center gap-1 text-sm font-medium transition-colors border-l border-[#2a2a2a]">
-            <Plus size={14} />
-            Track
+          <button 
+            onClick={handleTrack}
+            disabled={isTracking || !url.trim()}
+            className="bg-[#2a2a2a] hover:bg-[#333] disabled:bg-[#1a1a1a] text-white px-3 py-2 flex items-center gap-1 text-sm font-medium transition-colors border-l border-[#2a2a2a]"
+          >
+            {isTracking ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Plus size={14} />}
+            {isTracking ? 'Tracking...' : 'Track'}
           </button>
         </div>
       </div>

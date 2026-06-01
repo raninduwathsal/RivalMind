@@ -56,6 +56,7 @@ app.post('/api/scrape/social', async (req, res) => {
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from '@supabase/supabase-js';
+import { processCompetitorVideo } from './video/ingestion.js';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
 const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || '';
@@ -106,6 +107,67 @@ User Query: ${query}`;
   } catch (error: any) {
     console.error('[RAG Query] Error:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// 5. Social Video Ingestion endpoint
+app.post('/api/video/ingest', async (req, res) => {
+  try {
+    const { videoPath, competitorName } = req.body;
+    if (!videoPath || !competitorName) return res.status(400).json({ error: 'videoPath and competitorName are required' });
+    
+    const result = await processCompetitorVideo(videoPath, competitorName);
+    res.json(result);
+  } catch (error: any) {
+    console.error('[Video Ingestion Endpoint] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+import { ingestContent } from './rag/ingestion.js';
+import { runInvestigatorAgent } from './ai/investigator.js';
+
+// 6. RAG Ingestion endpoint
+app.post('/api/ingest/web', async (req, res) => {
+  try {
+    const { content, source, competitor_id } = req.body;
+    if (!content || !source) return res.status(400).json({ error: 'content and source are required' });
+    
+    const result = await ingestContent(content, { source, competitor_id });
+    res.json(result);
+  } catch (error: any) {
+    console.error('[Ingestion Endpoint] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 7. Agentic Web Crawler (SSE)
+app.get('/api/investigate', async (req, res) => {
+  const companyName = req.query.company as string;
+  if (!companyName) return res.status(400).json({ error: 'Company name required' });
+
+  // Set up SSE
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive'
+  });
+
+  const sendEvent = (type: string, data: any) => {
+    res.write(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`);
+  };
+
+  try {
+    const finalMetrics = await runInvestigatorAgent(companyName, (msg) => {
+      sendEvent('progress', { message: msg });
+    });
+    
+    sendEvent('complete', { metrics: finalMetrics });
+  } catch (error: any) {
+    console.error('[Investigate Endpoint] Error:', error);
+    sendEvent('error', { message: error.message });
+  } finally {
+    res.end();
   }
 });
 
