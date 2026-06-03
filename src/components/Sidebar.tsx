@@ -7,6 +7,7 @@ export default function Sidebar() {
   const links = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { name: 'Discovery Engine', path: '/discovery', icon: Activity },
+    { name: 'Competitor Intelligence', path: '/competitor-intelligence', icon: Target },
     { name: 'Sales Battlecards', path: '/battlecards', icon: Target },
     { name: 'Product Comparisons', path: '/products', icon: Package },
     { name: 'Strategy RAG', path: '/strategy', icon: MessageSquareCode },

@@ -47,7 +47,7 @@ async function scrapeUrl(url: string) {
   }
 }
 
-export async function runInvestigatorAgent(companyName: string, onProgress: (msg: string) => void) {
+export async function runInvestigatorAgent(companyName: string, customInstructions: string = '', onProgress: (msg: string) => void) {
   onProgress(`Starting investigation on: ${companyName}`);
   
   // Fetch existing metric keys to encourage apples-to-apples comparison
@@ -68,10 +68,14 @@ Please prioritize finding data for these specific categories so we can compare t
     // Ignore db errors, just proceed without hint
   }
 
+  const customInstructionsPrompt = customInstructions 
+    ? `\n\nUSER CUSTOM INSTRUCTIONS & PROVIDED URLS:\n"${customInstructions}"\nYou MUST heavily prioritize these instructions and explore any URLs provided here.` 
+    : '';
+
   const systemPrompt = `You are an elite competitive intelligence investigator.
 Your goal is to investigate the company "${companyName}". 
 You must search the web, find their main site, their pricing, their social media momentum on Reddit/Twitter/LinkedIn, and recent news.
-Then, dynamically synthesize a fully structured JSON payload containing metrics you deem important based on your findings.${existingMetricsHint}
+Then, dynamically synthesize a fully structured JSON payload containing metrics you deem important based on your findings.${existingMetricsHint}${customInstructionsPrompt}
 
 Additionally, if the company offers SaaS packages, menu items, or ecommerce products, you must extract these as a separate catalog/array so we can compare their products side-by-side.
 
@@ -115,7 +119,7 @@ When you are completely satisfied with your deep dive, call the "submit_findings
             },
             products: {
               type: "array",
-              description: "An array of product objects (e.g., SaaS tiers, menu items). Each object should have a 'name', 'price', and 'features'/'description'. Leave empty if none found.",
+              description: "An array of product objects (e.g., SaaS tiers, menu items). Each object MUST have a 'name', and SHOULD have 'price', 'rating' (if found), and 'features'/'description'. Do not omit prices or ratings if they are visible in the scraped text.",
               items: { type: "object", additionalProperties: true }
             }
           }, 
@@ -133,7 +137,7 @@ When you are completely satisfied with your deep dive, call the "submit_findings
     onProgress(`Thinking (Step ${iterations}/${maxIterations})...`);
 
     const response = await openai.chat.completions.create({
-      model: 'deepseek-chat',
+      model: 'deepseek-v4-pro',
       messages,
       tools,
       temperature: 0.1,

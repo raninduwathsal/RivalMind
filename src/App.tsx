@@ -8,6 +8,8 @@ import StrategyRag from './pages/StrategyRag';
 import Settings from './pages/Settings';
 import ProductComparisons from './pages/ProductComparisons';
 
+import CompetitorIntelligence from './pages/CompetitorIntelligence';
+
 function App() {
   return (
     <Router>
@@ -20,6 +22,7 @@ function App() {
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/discovery" element={<DiscoveryAnimation />} />
+              <Route path="/competitor-intelligence" element={<CompetitorIntelligence />} />
               <Route path="/battlecards" element={<SalesBattlecards />} />
               <Route path="/products" element={<ProductComparisons />} />
               <Route path="/strategy" element={<StrategyRag />} />

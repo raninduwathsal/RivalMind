@@ -47,7 +47,11 @@ export async function scrapeTarget(url: string) {
     const validUrl = url.startsWith('http://') || url.startsWith('https://') ? url : `https://${url}`;
     
     // Navigate to URL and wait for DOM content to load
-    await page.goto(validUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    try {
+      await page.goto(validUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    } catch (navError: any) {
+      console.log(`[Stealth Scraper] Navigation error or timeout for ${url}. Proceeding with whatever loaded.`);
+    }
     
     // Wait for a short random delay to mimic human reading and let SPA render
     await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 2000));
@@ -56,7 +60,7 @@ export async function scrapeTarget(url: string) {
     
     // Extract innerText from the body, which effectively strips HTML tags and scripts
     const textContent = await page.evaluate(() => {
-      return document.body.innerText;
+      return document.body ? document.body.innerText : '';
     });
 
     return {

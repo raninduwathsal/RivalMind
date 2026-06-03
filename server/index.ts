@@ -141,9 +141,89 @@ app.post('/api/ingest/web', async (req, res) => {
   }
 });
 
+// 6.5. Agentic Scraper Proxy (Meta Ads & Uber Eats)
+app.post('/api/agentic-scraper', async (req, res) => {
+  try {
+    const { competitor, customInstructions, target = 'meta_ads' } = req.body;
+
+    if (!competitor) {
+      return res.status(400).json({ error: 'Competitor name or URL is required' });
+    }
+
+    const workerUrl = process.env.META_SCRAPER_WORKER_URL;
+    if (!workerUrl) {
+      return res.status(500).json({ error: 'META_SCRAPER_WORKER_URL is not configured' });
+    }
+
+    // Set up SSE
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive'
+    });
+
+    const sendEvent = (message: string, isResult: boolean = false, data: any = null) => {
+      res.write(JSON.stringify({ message, isResult, data }) + '\n');
+    };
+
+    const targetName = target === 'uber_eats' ? 'Uber Eats Menu' : 'Meta Ads Library';
+
+    sendEvent(`[Agent] Initializing ${targetName} scraper for: ${competitor}...`);
+    if (customInstructions) {
+      sendEvent(`[Agent] Custom instructions provided. Injecting into agent context.`);
+    }
+    
+    sendEvent(`[System] Dispatching request to custom worker at ${workerUrl}...`);
+    
+    try {
+      const response = await fetch(workerUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.WORKER_AUTH_TOKEN || ''}`
+        },
+        body: JSON.stringify({ competitor, customInstructions: customInstructions || '', target }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Worker responded with status: ${response.status}`);
+      }
+
+      if (response.body) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const text = decoder.decode(value);
+          const lines = text.split('\n').filter(Boolean);
+          for (const line of lines) {
+            try {
+              const parsed = JSON.parse(line);
+              sendEvent(parsed.message, parsed.isResult, parsed.data);
+            } catch (e) {
+              sendEvent(line); // fallback for raw text
+            }
+          }
+        }
+      }
+    } catch (err: any) {
+      sendEvent(`[Error] Worker failed: ${err.message}`);
+    } finally {
+      res.end();
+    }
+  } catch (error: any) {
+    console.error('[Agentic Scraper Endpoint] Error:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+});
+
 // 7. Agentic Web Crawler (SSE)
-app.get('/api/investigate', async (req, res) => {
-  const companyName = req.query.company as string;
+app.all('/api/investigate', async (req, res) => {
+  const companyName = (req.query.company || req.body.competitor) as string;
+  const customInstructions = (req.query.customInstructions || req.body.customInstructions || req.body.recommendedUrls) as string || '';
   if (!companyName) return res.status(400).json({ error: 'Company name required' });
 
   // Set up SSE
@@ -158,7 +238,7 @@ app.get('/api/investigate', async (req, res) => {
   };
 
   try {
-    const finalMetrics = await runInvestigatorAgent(companyName, (msg) => {
+    const finalMetrics = await runInvestigatorAgent(companyName, customInstructions, (msg) => {
       sendEvent('progress', { message: msg });
     });
     

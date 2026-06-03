@@ -8,6 +8,7 @@ export default function DiscoveryAnimation() {
   const navigate = useNavigate();
   const targetUrl = searchParams.get('url') || '';
   const domain = searchParams.get('domain') || '';
+  const instructions = searchParams.get('instructions') || '';
   const name = domain ? domain.split('.')[0].charAt(0).toUpperCase() + domain.split('.')[0].slice(1) : 'Unknown';
 
   const [logs, setLogs] = useState<{ timestamp: string, text: string }[]>([]);
@@ -22,7 +23,7 @@ export default function DiscoveryAnimation() {
   useEffect(() => {
     if (!domain) return;
 
-    const eventSource = new EventSource(`http://localhost:3001/api/investigate?company=${encodeURIComponent(name)}`);
+    const eventSource = new EventSource(`http://localhost:3001/api/investigate?company=${encodeURIComponent(name)}&customInstructions=${encodeURIComponent(instructions)}`);
 
     eventSource.addEventListener('progress', (e) => {
       const data = JSON.parse(e.data);

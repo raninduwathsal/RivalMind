@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 
 export default function Header() {
   const [url, setUrl] = useState('');
+  const [instructions, setInstructions] = useState('');
   const [isTracking, setIsTracking] = useState(false);
   const navigate = useNavigate();
 
@@ -15,8 +16,9 @@ export default function Header() {
       // Clean domain
       const domain = url.replace(/^(?:https?:\/\/)?(?:www\.)?/i, "").split('/')[0];
 
+      navigate(`/discovery?url=${encodeURIComponent(url)}&domain=${encodeURIComponent(domain)}&instructions=${encodeURIComponent(instructions.trim())}`);
       setUrl('');
-      navigate(`/discovery?url=${encodeURIComponent(url)}&domain=${encodeURIComponent(domain)}`);
+      setInstructions('');
     } catch (error) {
       console.error("Failed to route to discovery:", error);
     } finally {
@@ -28,25 +30,33 @@ export default function Header() {
     <header className="h-16 bg-[#121212] border-b border-[#2a2a2a] flex items-center justify-between px-6 shrink-0">
       <div className="flex-1 flex items-center gap-4">
         {/* Search */}
-        <div className="relative w-80">
+        <div className="relative w-64">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Search size={16} className="text-[#a1a1aa]" />
           </div>
           <input
             type="text"
             className="block w-full pl-10 pr-3 py-2 border border-[#2a2a2a] rounded-md leading-5 bg-[#0a0a0a] text-white placeholder-[#a1a1aa] focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors"
-            placeholder="Search signals, features..."
+            placeholder="Search signals..."
           />
         </div>
 
         {/* Add Competitor */}
-        <div className="flex items-center gap-2 border border-[#2a2a2a] bg-[#0a0a0a] rounded-md overflow-hidden focus-within:ring-1 focus-within:ring-purple-500 focus-within:border-purple-500 transition-colors">
+        <div className="flex items-center border border-[#2a2a2a] bg-[#0a0a0a] rounded-md overflow-hidden focus-within:ring-1 focus-within:ring-purple-500 focus-within:border-purple-500 transition-colors">
           <input
-            type="url"
+            type="text"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
+            placeholder="Competitor Name or URL"
+            disabled={isTracking}
+            className="bg-transparent border-r border-[#2a2a2a] outline-none text-white text-sm pl-3 py-2 w-48 placeholder-[#a1a1aa] disabled:opacity-50"
+          />
+          <input
+            type="text"
+            value={instructions}
+            onChange={(e) => setInstructions(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleTrack()}
-            placeholder="Add competitor URL (e.g., acme.com)"
+            placeholder="Custom instructions (e.g., focus Sri Lanka)"
             disabled={isTracking}
             className="bg-transparent border-none outline-none text-white text-sm pl-3 py-2 w-64 placeholder-[#a1a1aa] disabled:opacity-50"
           />
